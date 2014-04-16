@@ -4,27 +4,27 @@ import threading
 
 class MyBot(threading.Thread):
 
-    host = "chat.freenode.net"
-    port = 6667
+    host = ""
+    port = 0
     s = socket.socket()
 
-    nick = "Blorgbot"
-    ident = "Blablubb"
-    master = "Blorgh"
-    channel = "#mytestchannel"
+    nick = ""
+    ident = ""
+    master = ""
+    channel = ""
     quit = False
     inputs = []
     inputs_read = False
 
-    # This is our first function! It will respond to server Pings.
+    # Respond to pings
     def ping(self):
         self.s.send(bytes("PONG :Pong\n", 'UTF-8'))
 
-    # This is the send message function, it simply sends messages to the channel.
+    # Send messages to channel.
     def sendmsg(self, chan, msg):
-        self.send(bytes("PRIVMSG " + chan + " :" + msg + "\n", 'UTF-8'))
+        self.s.send(bytes("PRIVMSG " + chan + " :" + msg + "\n", 'UTF-8'))
 
-    # This function is used to join channels.
+    # Join channels
     def joinchan(self, chan):
         self.s.send(bytes("JOIN " + chan + "\n", 'UTF-8'))
 
@@ -39,12 +39,8 @@ class MyBot(threading.Thread):
         elif message.find(self.nick + ': help') != -1:
             self.s.send(bytes('PRIVMSG %s :%s: My other command is what?.\r\n' % (chan, name), 'UTF-8'))
 
-
     # Looking for inputs in message and delete list if it was already read
     def findinput(self, msg):
-        if self.inputs_read:
-            self.inputs.clear()
-
         if msg.find(":up") != -1:
             self.inputs.append("up")
         elif msg.find(":down") != -1:
@@ -54,13 +50,12 @@ class MyBot(threading.Thread):
         elif msg.find(":right") != -1:
             self.inputs.append("right")
 
-        self.inputs_read = False
-
     # Poll inputs
     def getinputs(self):
         self.inputs_read = True
         return self.inputs
 
+    # initialize settings and connect to channel
     def __init__(self, host="chat.freenode.net", port=6667, channel="#mytestchannel", nick="Blorgbot",
                  ident="Blablubb", master="Blorg"):
         threading.Thread.__init__(self)
@@ -71,16 +66,18 @@ class MyBot(threading.Thread):
         self.ident = ident
         self.master = master
 
-        print("auf gehts")
         self.s.connect((self.host, self.port))
 
         self.s.send(bytes("NICK %s\r\n" % self.nick, "UTF-8"))
         self.s.send(bytes("USER %s %s bla :%s\r\n" % (self.ident, self.host, "nope"), "UTF-8"))
         self.joinchan(self.channel)
 
+    # commence listening
     def run(self):
 
+        self.sendmsg(self.channel, "Hello everyone!")
         while self.quit is False:
+
             ircmsg = self.s.recv(2048).decode("UTF-8")
             ircmsg = str(ircmsg)
             ircmsg = ircmsg.strip('\r\n')
@@ -92,11 +89,11 @@ class MyBot(threading.Thread):
                 channel = ircmsg.split(' PRIVMSG ')[-1].split(' :')[0]
                 self.commands(nick, channel, ircmsg)
 
-            # if the server pings us then we've got to respond!
+            # respond to ping
             if ircmsg.find("PING :") != -1:
                 self.ping()
 
-            # If we can find "Hello Mybot" it will call the function hello()
+            # Be polite and greet back
             if ircmsg.find(":Hello " + self.nick) != -1:
                 nick = ircmsg.split('!')[0][1:]
                 self.hello(nick)
